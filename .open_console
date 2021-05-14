@@ -1,0 +1,11 @@
+[console]
+    Console = ConEmu
+    ; Console = Console2
+
+[paths]
+    ConEmuConsole = C:\Program Files\ConEmu\ConEmu\ConEmuC64.exe
+    ConEmuGui = C:\Program Files\ConEmu\ConEmu64.exe
+    Console2Gui = C:\Program Files\Console\Console.exe
+
+[miscelaneous]
+    CodePage = cp437
