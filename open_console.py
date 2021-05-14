@@ -1,10 +1,10 @@
 # import sys
-import time
-import os
-import subprocess
 import argparse
 import configparser
+import os
 import logging
+import subprocess
+import time
 
 # import re
 
@@ -39,12 +39,17 @@ def main():
 
     working_dir = os.path.join(os.getcwd(), working_dir)
 
-    switch_to_tab(working_dir, args.command)
-
-
-def switch_to_tab(working_dir, command):
-    print("hello")
     config = load_config()
+    console = config.get("console", "console", fallback=CONSOLE)
+    if console.lower() == "conemu":
+        switch_to_conemu_tab(config, working_dir, args.command)
+
+    elif console.lower() == "console2":
+        switch_to_console2_tab(config, working_dir, args.command)
+
+
+def switch_to_conemu_tab(config, working_dir, command):
+    print("hello")
 
     if not os.path.isdir(working_dir):
         print("Dir: '%s' doesn't exist" % working_dir)
@@ -186,9 +191,30 @@ def run_script(config, script):
     return ret
 
 
+def switch_to_console2_tab(config, working_dir, command):
+
+    if not os.path.isdir(working_dir):
+        print("Dir: '%s' doesn't exist" % working_dir)
+        return
+
+    args = ["-d", working_dir]
+    if command:
+        args += ["-p", command]
+
+    subprocess.Popen(
+        [config.get("path", "console2gui", fallback=CONSOLE2_GUI)] + args
+    )
+
+
+CONSOLE="ConEmu"
+# CONSOLE="Console2"
+
 CONEMU_ROOT = r"C:\Program Files\ConEmu"
 CONEMU_CONSOLE = os.path.join(CONEMU_ROOT, r"ConEmu\ConEmuC64.exe")
 CONEMU_GUI = os.path.join(CONEMU_ROOT, "ConEmu64.exe")
+
+CONSOLE2_ROOT = r"C:\Program Files\Console"
+CONSOLE2_GUI = os.path.join(CONSOLE2_ROOT, "Console.exe")
 
 # Use chcp command to determine your console code page
 # CONSOLE_CODE_PAGE = "cp437"
@@ -196,16 +222,6 @@ CONSOLE_CODE_PAGE = "cp%d" % win32console.GetConsoleCP()
 
 
 def load_config():
-    # defaults = {
-    #     "Paths" : {
-    #         "ConEmuConsole" : CONEMU_CONSOLE,
-    #         "ConEmuGui" : CONEMU_GUI,
-    #         },
-    #     "Miscellaneous" : {
-    #         "CodePage" : CONSOLE_CODE_PAGE,
-    #         }
-    #     }
-    # config = configparser.ConfigParser(defaults=defaults)
     config = configparser.ConfigParser()
     config_path = get_config_path()
     if config_path and os.path.isfile(config_path):
