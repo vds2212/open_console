@@ -1,4 +1,4 @@
-# import sys
+import sys
 import argparse
 import configparser
 import os
@@ -11,16 +11,18 @@ import time
 import win32gui
 import win32console
 
+# import msvcrt
+# print("pause")
+# msvcrt.getch()
+
 
 def main():
-    # with open(r"C:\Softs\open_console.log", mode="at") as g:
-    #     g.write(" ".join(['"%s"' % arg for arg in sys.argv]) + "\n")
+    with open(r"C:\Softs\open_console.log", mode="at") as g:
+        g.write(" ".join(['"%s"' % arg for arg in sys.argv]) + "\n")
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "-t", action="store_true", help="Output timing information", default=False
-    )
+    parser.add_argument("-t", action="store_true", help="Output timing information", default=False)
 
     parser.add_argument("working_dir", nargs="?", help="Working Directory", default="")
 
@@ -119,7 +121,7 @@ def switch_to_conemu_tab(config, working_dir, command):
             script = ""
 
             # Change the current directory:
-            script += 'Print("cd \\"%s\\"\\ncls\n");' % escaped_working_dir
+            script += 'Print("cd /d \\"%s\\"\\ncls\n");' % escaped_working_dir
             if command:
                 escaped_command = command
                 script += 'Print("%s");' % escaped_command
@@ -136,9 +138,7 @@ def switch_to_conemu_tab(config, working_dir, command):
     else:
         # ConEmu is not yet started:
         print("New process")
-        subprocess.Popen(
-            [config.get("path", "conemnugui", fallback=CONEMU_GUI), "-Dir", working_dir]
-        )
+        subprocess.Popen([config.get("path", "conemnugui", fallback=CONEMU_GUI), "-Dir", working_dir])
         if command:
             time.sleep(0.2)
             escaped_command = command
@@ -175,10 +175,7 @@ def run_script(config, script):
     result = result.split(b";")
     result = result[-1]
     ret = result.split(b"\n")
-    ret = [
-        x.decode(config.get("miscellaneous", "codepage", fallback=CONSOLE_CODE_PAGE))
-        for x in ret
-    ]
+    ret = [x.decode(config.get("miscellaneous", "codepage", fallback=CONSOLE_CODE_PAGE)) for x in ret]
     print(" " * 4 + "Result:", ret)
 
     if len(ret) == 1:
@@ -201,12 +198,10 @@ def switch_to_console2_tab(config, working_dir, command):
     if command:
         args += ["-p", command]
 
-    subprocess.Popen(
-        [config.get("path", "console2gui", fallback=CONSOLE2_GUI)] + args
-    )
+    subprocess.Popen([config.get("path", "console2gui", fallback=CONSOLE2_GUI)] + args)
 
 
-CONSOLE="ConEmu"
+CONSOLE = "ConEmu"
 # CONSOLE="Console2"
 
 CONEMU_ROOT = r"C:\Program Files\ConEmu"
