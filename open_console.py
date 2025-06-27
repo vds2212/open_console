@@ -1,18 +1,22 @@
-import sys
 import argparse
 import configparser
-import os
 import logging
+import os
+import re
 import subprocess
+import sys
 import time
+from typing import Tuple
+
+import win32con
+import win32console
+import win32gui
 
 # import re
 
-import win32gui
-import win32console
 
 # import msvcrt
-# print("pause")
+# logging.warning("pause")
 # msvcrt.getch()
 
 
@@ -36,6 +40,10 @@ def main():
         return
 
     working_dir = args.working_dir
+    m = re.match('([A-Z]:)"', working_dir)
+    if m:
+        working_dir = m.group(1) + "\\"
+    logging.warning(f"working_dir: {working_dir}")
     if not working_dir:
         return
 
@@ -51,17 +59,15 @@ def main():
 
 
 def switch_to_conemu_tab(config, working_dir, command):
-    print("hello")
-
     if not os.path.isdir(working_dir):
-        print("Dir: '%s' doesn't exist" % working_dir)
+        logging.warning("Dir: '%s' doesn't exist" % working_dir)
         return
 
     ret = run_script(config, "IsConEmu()")
     if ret == "Yes":
         norm_working_dir = os.path.normpath(working_dir)
         norm_working_dir = os.path.normcase(norm_working_dir)
-        print("Working Dir:", norm_working_dir)
+        logging.warning("Working Dir: %s" % norm_working_dir)
 
         # Test first the current tab:
         current_dir, hwnd = run_script(config, 'GetInfo("CurDir","HWND");')
@@ -74,8 +80,7 @@ def switch_to_conemu_tab(config, working_dir, command):
                 script += r'Print("\e %s");' % escaped_command
                 ret = run_script(config, script)
 
-            handle = int(hwnd, 16)
-            win32gui.SetForegroundWindow(handle)
+            focus_windows(hwnd)
             return
 
         # Otherwise loop on all the tabs to find the first match if any:
@@ -88,11 +93,11 @@ def switch_to_conemu_tab(config, working_dir, command):
             current_dir, hwnd = run_script(config, script)
             current_dir = os.path.normpath(current_dir)
             current_dir = os.path.normcase(current_dir)
-            print("Current Dir:", current_dir)
+            logging.warning(f"Current Dir: '{current_dir}'")
             if current_dir != norm_working_dir:
                 continue
 
-            print("Tab found")
+            logging.warning("Tab found")
             script = ""
             script += "Tab(7,%d);" % (index + 1)
             if command:
@@ -101,11 +106,10 @@ def switch_to_conemu_tab(config, working_dir, command):
                 script += r'Print("\e %s");' % escaped_command
             ret = run_script(config, script)
 
-            handle = int(hwnd, 16)
-            win32gui.SetForegroundWindow(handle)
+            focus_windows(hwnd)
             break
         else:
-            print("New tab")
+            logging.warning("New tab")
             # No tab is matching create a new tab:
             run_script(config, "Recreate(0,0);")
 
@@ -131,18 +135,26 @@ def switch_to_conemu_tab(config, working_dir, command):
 
             script += 'GetInfo("HWND");'
 
-            hwnd = run_script(config, script)
-            handle = int(hwnd, 16)
-            win32gui.SetForegroundWindow(handle)
+            hwnd = str(run_script(config, script))
+            focus_windows(hwnd)
 
     else:
         # ConEmu is not yet started:
-        print("New process")
+        logging.warning("New process")
         subprocess.Popen([config.get("path", "conemnugui", fallback=CONEMU_GUI), "-Dir", working_dir])
         if command:
             time.sleep(0.2)
             escaped_command = command
             run_script(config, 'Print("%s");' % escaped_command)
+
+
+def focus_windows(hwnd):
+    handle = int(hwnd, 16)
+    placement = win32gui.GetWindowPlacement(handle)
+    if placement[1] == win32con.SW_SHOWMINIMIZED:
+        win32gui.ShowWindow(handle, win32con.SW_SHOWNORMAL)
+
+    win32gui.SetForegroundWindow(handle)
 
 
 def escape_string(command):
@@ -159,11 +171,11 @@ def escape_directory(directory):
     return escaped_dir
 
 
-def run_script(config, script):
-    print("Script:", script)
+def run_script(config, script) -> Tuple[str, str]:
+    logging.warning("Script: %s", script)
     command = ["/GUIMACRO:0", script]
     command = " ".join(command)
-    print(" " * 4 + command)
+    logging.warning(" " * 4 + command)
     process = subprocess.Popen(
         command,
         executable=config.get("paths", "conemuconsole", fallback=CONEMU_CONSOLE),
@@ -171,27 +183,26 @@ def run_script(config, script):
     )
     process.wait()
     result = process.communicate()[0]
-    print(" " * 4 + "Result:", result)
+    logging.warning(" " * 4 + "Result: %s" % repr(result))
     result = result.split(b";")
     result = result[-1]
     ret = result.split(b"\n")
     ret = [x.decode(config.get("miscellaneous", "codepage", fallback=CONSOLE_CODE_PAGE)) for x in ret]
-    print(" " * 4 + "Result:", ret)
+    logging.warning(" " * 4 + "Result: %s" % repr(ret))
 
     if len(ret) == 1:
         ret = ret[0]
 
     if len(ret) == 0:
-        ret = None
+        ret = ["", "0"]
 
-    print(" " * 4 + "Ret:", ret)
+    logging.warning(" " * 4 + "Ret: %s" % repr(ret))
     return ret
 
 
 def switch_to_console2_tab(config, working_dir, command):
-
     if not os.path.isdir(working_dir):
-        print("Dir: '%s' doesn't exist" % working_dir)
+        logging.warning("Dir: '%s' doesn't exist" % working_dir)
         return
 
     args = ["-d", working_dir]
