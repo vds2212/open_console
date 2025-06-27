@@ -212,6 +212,8 @@ def switch_to_console2_tab(config, working_dir, command):
     subprocess.Popen([config.get("path", "console2gui", fallback=CONSOLE2_GUI)] + args)
 
 
+# Fallback when the settings are not present in the configuration:
+# "%UserProfile%/.open_console"
 CONSOLE = "ConEmu"
 # CONSOLE="Console2"
 
